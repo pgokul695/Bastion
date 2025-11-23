@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.bastion" path="/org/gnome/shell/extensions/bastion/">
+    
+    <key name="current-provider" type="s">
+      <default>'Google'</default>
+      <summary>Selected DNS Provider</summary>
+    </key>
+
+    <key name="custom-dns" type="(sss)">
+      <default>('Custom', '10.0.0.1', '10.0.0.2')</default>
+      <summary>Custom DNS Configuration</summary>
+    </key>
+
+  </schema>
+</schemalist>

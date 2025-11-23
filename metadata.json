@@ -1,0 +1,9 @@
+{
+    "name": "Bastion",
+    "description": "One-click toggle between Secure DNS (Anti-Leak) and Login Mode (for Captive Portals).",
+    "uuid": "bastion@gokul.codes",
+    "shell-version": [ "45", "46", "47" ,"48","49"],
+    "url": "https://github.com/pgokul695/bastion",
+    "version": 1,
+    "settings-schema": "org.gnome.shell.extensions.bastion"
+}
