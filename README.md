@@ -18,25 +18,26 @@
 ---
 
 ### 🚨 The Problem
-Most DNS switchers simply change your DNS IP address (e.g., to `8.8.8.8`) but leave the **"Automatic DNS"** flag enabled in NetworkManager. This causes your system to mix your ISP's DNS with your custom DNS, leading to **DNS Leaks**. Your ISP can still see what websites you visit.
+Most DNS switchers simply change your DNS IP address (e.g., to `8.8.8.8`) but leave the **"Automatic DNS"** flag enabled in NetworkManager. This causes your system to mix your ISP's DNS with your custom DNS.
+
+**The result:** Your ISP can still **log your DNS lookup requests** and use **DNS Poisoning** to block or redirect specific websites (like Bit.ly), even though you thought you were using Google DNS.
 
 ### 🛡️ The Bastion Solution
-Bastion acts as a firewall for your DNS settings. It creates two distinct modes:
+Bastion acts as a strict enforcer for your network settings to prevent these "DNS Leaks."
 
 1.  **Fortress Mode (Secure):**
     * Forces `ipv4.ignore-auto-dns yes`.
-    * Completely locks out your ISP's DNS.
-    * Routes all queries strictly through your chosen encrypted provider (Google, Cloudflare, Quad9, or Custom).
+    * **Prevents DNS Leaks:** Stops your computer from ever asking your ISP's server for directions.
+    * **Bypasses Censorship:** Ensures domain resolution happens strictly through your chosen encrypted provider (Google, Cloudflare, etc.), bypassing ISP-level DNS blocks.
 
 2.  **Airlock Mode (Login):**
     * Temporarily sets `ipv4.ignore-auto-dns no`.
-    * Allows the ISP DNS to function so you can load **Captive Portals** (Login pages at Hotels, Airports, and Universities).
+    * Allows the ISP DNS to function solely for the purpose of loading **Captive Portals** (Login pages at Hotels, Airports, and Universities).
 
 ---
 
 ## ✨ Features
 
-* **Dropdown Menu:** Quickly switch between Google, Cloudflare, Quad9, OpenDNS, or System Default.
 * **True Anti-Leak:** strict enforcement of NetworkManager flags.
 * **Custom DNS:** Enter your own preferred Private DNS IPs via a modern Libadwaita settings window.
 * **Visual Feedback:**
@@ -82,21 +83,29 @@ Bastion acts as a firewall for your DNS settings. It creates two distinct modes:
 
 ## 🚀 Usage Guide
 
-### 1. Daily Use (Secure)
-Click the **Shield** icon in your top bar and select a provider (e.g., **Cloudflare**).
-* *Effect:* Your connection restarts. ISP DNS is removed. You are leak-proof.
+### 1. Initial Setup (Configure your Provider)
+By default, Bastion uses Google DNS. To change this:
+1.  Open the **Extensions** app.
+2.  Click the **Settings (⚙️)** button next to Bastion.
+3.  Select your preferred provider (Cloudflare, Quad9, OpenDNS) or enter **Custom IPs**.
+* *This setting determines which DNS is used when Secure Mode is active.*
 
-### 2. At Hotels / Colleges (Captive Portals)
+### 2. Daily Use (The Toggle)
+Bastion lives in your top bar as a single icon. **Click the icon** to toggle modes:
+
+* **🛡️ Shield Icon (Secure Mode):**
+    * You are safe. ISP DNS is blocked.
+    * Your traffic is using the provider you chose in Settings.
+* **🔓 Unlock Icon (Login Mode):**
+    * You are "Open." ISP DNS is allowed.
+    * Use this mode **only** when you need to log in to a captive portal.
+
+### 3. Handling Captive Portals (Hotels / Colleges)
 If you connect to Wi-Fi but the login page won't load:
-1.  Click the Bastion icon.
-2.  Select **🔓 System Default (Login Mode)**.
-3.  The login page will now appear. Log in.
-4.  **Immediately switch back to a Secure Provider** once online.
-
-### 3. Custom Configuration
-1.  Open the menu and click **⚙️ Edit Custom DNS...**
-2.  Enter your Provider Name and IPs (Primary/Secondary).
-3.  Select **Custom** from the dropdown menu.
+1.  Look at the Bastion icon. If it is a **Shield**, click it.
+2.  Wait for the icon to change to **Unlock (🔓)**.
+3.  The login page should now appear. Sign in.
+4.  **Important:** Once you are online, click the icon again to return to **Shield (Secure)** mode.
 
 ---
 
