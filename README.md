@@ -3,8 +3,8 @@
 **A privacy-focused GNOME Shell extension to prevent DNS leaks and handle Captive Portals.**
 
 <p align="center">
-    <a href="https://extensions.gnome.org/extension/YOUR_EXTENSION_ID/">
-        <img src="https://img.shields.io/badge/GNOME_Extensions-Coming_Soon-blue?logo=gnome&style=for-the-badge" alt="GNOME Extensions">
+    <a href="https://extensions.gnome.org/extension/8898/bastion/">
+        <img src="https://img.shields.io/badge/GNOME_Extensions-blue?logo=gnome&style=for-the-badge" alt="GNOME Extensions">
     </a>
     <a href="LICENSE">
         <img src="https://img.shields.io/badge/License-GPLv3-green?style=for-the-badge" alt="License">
