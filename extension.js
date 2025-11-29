@@ -27,15 +27,21 @@ class DnsToggle extends PanelMenu.Button {
             this._toggleDNS();
         });
 
-        // Check status immediately and then every 5 seconds
+        // Check status immediately
         this._checkStatus();
+
+        if (this._timerId) {
+            GLib.source_remove(this._timerId);
+            this._timerId = null;
+        }
+
         this._timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
             this._checkStatus();
             return GLib.SOURCE_CONTINUE;
         });
     }
 
-    _onDestroy() {
+    destroy() {
         if (this._timerId) {
             GLib.source_remove(this._timerId);
             this._timerId = null;
@@ -138,8 +144,7 @@ export default class ExtensionImpl extends Extension {
     }
 
     disable() {
-        this._indicator._onDestroy();
+        this._indicator.destroy();
         this._indicator = null;
     }
 }
-
