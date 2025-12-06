@@ -52,7 +52,7 @@ Bastion acts as a strict enforcer for your network settings to prevent these "DN
 
 ### Method 1: GNOME Extensions Website (Recommended)
 
-*Coming soon to extensions.gnome.org*
+[*Download*](https://extensions.gnome.org/extension/8898/bastion/)
 
 ### Method 2: Manual Installation (For Developers)
 
