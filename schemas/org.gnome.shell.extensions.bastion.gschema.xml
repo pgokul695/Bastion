@@ -12,5 +12,26 @@
       <summary>Custom DNS Configuration</summary>
     </key>
 
+    <key name="enable-encrypted-dns" type="b">
+      <default>false</default>
+      <summary>Enable DNS over TLS (DoT) in Secure Mode</summary>
+    </key>
+
+    <key name="strict-dns-mode" type="b">
+      <default>false</default>
+      <summary>Enable Strict DNS (No Fallback)</summary>
+      <description>If true, connection fails if DoT fails (yes). If false, falls back to clear text (opportunistic).</description>
+    </key>
+
+    <key name="enable-encrypted-dns-login" type="b">
+      <default>false</default>
+      <summary>Enable DNS over TLS (DoT) in Login Mode</summary>
+    </key>
+
+    <key name="toggle-shortcut" type="as">
+      <default>['&lt;Super&gt;b']</default>
+      <summary>Keyboard shortcut to toggle Bastion mode</summary>
+    </key>
+
   </schema>
 </schemalist>
