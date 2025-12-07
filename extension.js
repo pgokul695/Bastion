@@ -11,8 +11,12 @@ import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/
 const DnsToggle = GObject.registerClass(
 class DnsToggle extends PanelMenu.Button {
     _init(settings) {
-        super._init(0.0, 'Bastion');
+        super._init(0.0, _('Bastion'));
         this._settings = settings;
+
+        // Initialize timer IDs
+        this._timerId = null;
+        this._updateTimeoutId = null;
 
         // Icons
         this._iconSecure = 'security-high-symbolic';
@@ -32,11 +36,7 @@ class DnsToggle extends PanelMenu.Button {
         // Check status immediately
         this._checkStatus();
 
-        if (this._timerId) {
-            GLib.source_remove(this._timerId);
-            this._timerId = null;
-        }
-
+        // Start periodic check loop (every 5 seconds)
         this._timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
             this._checkStatus();
             return GLib.SOURCE_CONTINUE;
@@ -44,10 +44,18 @@ class DnsToggle extends PanelMenu.Button {
     }
 
     destroy() {
+        // CLEANUP: Remove the periodic status check loop
         if (this._timerId) {
             GLib.source_remove(this._timerId);
             this._timerId = null;
         }
+
+        // CLEANUP: Remove the one-shot update delay if pending
+        if (this._updateTimeoutId) {
+            GLib.source_remove(this._updateTimeoutId);
+            this._updateTimeoutId = null;
+        }
+
         super.destroy();
     }
 
@@ -114,7 +122,7 @@ class DnsToggle extends PanelMenu.Button {
     async toggleDNS() {
         let uuid = await this._getActiveUUID();
         if (!uuid) {
-            Main.notify('Bastion', 'No active connection found.');
+            Main.notify(_('Bastion'), _('No active connection found.'));
             return;
         }
 
@@ -133,10 +141,10 @@ class DnsToggle extends PanelMenu.Button {
             // Login mode usually implies we need connectivity (captive portals), so we stick to opportunistic.
             let dotSetting = useEncryptedDNS_Login ? 'opportunistic' : 'no';
             let notifyMsg = useEncryptedDNS_Login ? 
-                '🔓 Login Mode (ISP DNS + Encrypted)...' : 
-                '🔓 Login Mode (Standard)...';
+                _('🔓 Login Mode (ISP DNS + Encrypted)...') : 
+                _('🔓 Login Mode (Standard)...');
             
-            Main.notify('Bastion', notifyMsg);
+            Main.notify(_('Bastion'), notifyMsg);
             
             cmd = `pkexec sh -c 'nmcli connection modify ${uuid} ipv4.ignore-auto-dns no ipv4.dns "" connection.dns-over-tls ${dotSetting} && nmcli connection up ${uuid}'`;
 
@@ -146,7 +154,7 @@ class DnsToggle extends PanelMenu.Button {
 
             // SECURITY FIX: Validate IPs to prevent shell injection
             if (!/^[0-9. ]+$/.test(ips)) {
-                Main.notify('Bastion Error', 'Invalid Custom DNS format.');
+                Main.notify(_('Bastion Error'), _('Invalid Custom DNS format.'));
                 return;
             }
 
@@ -156,20 +164,32 @@ class DnsToggle extends PanelMenu.Button {
             
             let notifyMsg = '';
             if (useEncryptedDNS_Secure) {
-                notifyMsg = strictMode ? '🛡️ Secure Mode (Strict TLS)...' : '🛡️ Secure Mode (Opportunistic TLS)...';
+                notifyMsg = strictMode ? _('🛡️ Secure Mode (Strict TLS)...') : _('🛡️ Secure Mode (Opportunistic TLS)...');
             } else {
-                notifyMsg = '🛡️ Secure Mode (Standard DNS)...';
+                notifyMsg = _('🛡️ Secure Mode (Standard DNS)...');
             }
 
-            Main.notify('Bastion', notifyMsg);
+            Main.notify(_('Bastion'), notifyMsg);
 
             cmd = `pkexec sh -c 'nmcli connection modify ${uuid} ipv4.ignore-auto-dns yes ipv4.dns "${ips}" connection.dns-over-tls ${dotSetting} && nmcli connection up ${uuid}'`;
         }
 
         await this._runCommand(cmd);
         
-        // Wait 2 seconds for connection to cycle, then update icon
-        setTimeout(() => this._checkStatus(), 2000);
+        // Wait 2 seconds for connection to cycle, then update icon.
+        
+        // Prevent stacking: clear existing timer if user clicks rapidly
+        if (this._updateTimeoutId) {
+            GLib.source_remove(this._updateTimeoutId);
+            this._updateTimeoutId = null;
+        }
+
+        // Use GLib.timeout_add instead of setTimeout
+        this._updateTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+            this._checkStatus();
+            this._updateTimeoutId = null; // Clear ID self-reference
+            return GLib.SOURCE_REMOVE;
+        });
     }
 });
 
