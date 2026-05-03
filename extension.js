@@ -162,6 +162,11 @@ const DnsToggle = GObject.registerClass({
                 Main.notify(_('Bastion'), _('Invalid Custom DNS format.'));
                 return;
             }
+            // SECURITY FIX: Validate UUIDs to prevent shell injection
+            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid)) {
+                Main.notify(_('Bastion'), _('Invalid connection UUID.'));
+                return;
+            }
 
             // Determine strictness: 'yes' (Strict) vs 'opportunistic' (Fallback allowed)
             let secureValue = strictMode ? 'yes' : 'opportunistic';
