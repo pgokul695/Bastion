@@ -1,6 +1,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
+import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import GObject from 'gi://GObject';
@@ -8,10 +9,12 @@ import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const DnsToggle = GObject.registerClass(
-class DnsToggle extends PanelMenu.Button {
+const DnsToggle = GObject.registerClass({
+    GTypeName: 'BastionDnsToggle',   // FIX 1: Explicit stable name prevents
+                                      // GType collision on extension reload
+}, class DnsToggle extends PanelMenu.Button {
     _init(settings) {
-        super._init(0.0, _('Bastion'));
+        super._init(0.0, _('Bastion'), true);
         this._settings = settings;
 
         // Initialize timer IDs
@@ -20,7 +23,7 @@ class DnsToggle extends PanelMenu.Button {
 
         // Icons
         this._iconSecure = 'security-high-symbolic';
-        this._iconInsecure = 'channel-insecure-symbolic'; 
+        this._iconInsecure = 'channel-insecure-symbolic';
 
         this._icon = new St.Icon({
             icon_name: 'network-transmit-receive-symbolic',
@@ -28,11 +31,7 @@ class DnsToggle extends PanelMenu.Button {
         });
 
         this.add_child(this._icon);
-
-        this.connect('button-press-event', () => {
-            this.toggleDNS();
-        });
-
+        
         // Check status immediately
         this._checkStatus();
 
@@ -43,19 +42,29 @@ class DnsToggle extends PanelMenu.Button {
         });
     }
 
+    // FIX 2: Override vfunc_event instead of connecting to 'event' or
+    // 'button-press-event'. This is the most reliable approach in GNOME 50
+    // and avoids the signal dispatch changes in PanelMenu.Button.
+    vfunc_event(event) {
+        if (event.type() === Clutter.EventType.BUTTON_PRESS) {
+            this.toggleDNS();
+            return Clutter.EVENT_STOP;
+        }
+        return super.vfunc_event(event);
+    }
+
     destroy() {
         // CLEANUP: Remove the periodic status check loop
         if (this._timerId) {
             GLib.source_remove(this._timerId);
             this._timerId = null;
         }
-
+        
         // CLEANUP: Remove the one-shot update delay if pending
         if (this._updateTimeoutId) {
             GLib.source_remove(this._updateTimeoutId);
             this._updateTimeoutId = null;
         }
-
         super.destroy();
     }
 
@@ -65,7 +74,6 @@ class DnsToggle extends PanelMenu.Button {
                 ['/bin/sh', '-c', command],
                 Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
             );
-
             return new Promise((resolve, reject) => {
                 proc.communicate_utf8_async(null, null, (proc, res) => {
                     try {
@@ -111,7 +119,6 @@ class DnsToggle extends PanelMenu.Button {
         }
         let cmd = `nmcli -f ipv4.ignore-auto-dns connection show ${uuid}`;
         let [success, out] = await this._runCommand(cmd);
-
         if (success && out.includes('yes')) {
             this._icon.icon_name = this._iconSecure;
         } else {
@@ -127,55 +134,59 @@ class DnsToggle extends PanelMenu.Button {
         }
 
         // Check current state
-        let [success, out] = await this._runCommand(`nmcli -f ipv4.ignore-auto-dns connection show ${uuid}`);
+        let [success, out] = await this._runCommand(
+            `nmcli -f ipv4.ignore-auto-dns connection show ${uuid}`
+        );
         let isCurrentlySecure = out && out.includes('yes');
-        
+
         let useEncryptedDNS_Secure = this._settings.get_boolean('enable-encrypted-dns');
-        let useEncryptedDNS_Login = this._settings.get_boolean('enable-encrypted-dns-login');
-        let strictMode = this._settings.get_boolean('strict-dns-mode');
-        
+        let useEncryptedDNS_Login  = this._settings.get_boolean('enable-encrypted-dns-login');
+        let strictMode             = this._settings.get_boolean('strict-dns-mode');
+
         let cmd = '';
-        
+
         if (isCurrentlySecure) {
             // --- SWITCH TO LOGIN MODE ---
             // Login mode usually implies we need connectivity (captive portals), so we stick to opportunistic.
             let dotSetting = useEncryptedDNS_Login ? 'opportunistic' : 'no';
-            let notifyMsg = useEncryptedDNS_Login ? 
-                _('🔓 Login Mode (ISP DNS + Encrypted)...') : 
-                _('🔓 Login Mode (Standard)...');
             
-            Main.notify(_('Bastion'), notifyMsg);
-            
-            cmd = `pkexec sh -c 'nmcli connection modify ${uuid} ipv4.ignore-auto-dns no ipv4.dns "" connection.dns-over-tls ${dotSetting} && nmcli connection up ${uuid}'`;
+            // FIX 3: No emoji inside _() — they corrupt the string literal
+            // on some editors/terminals and cause a SyntaxError at load time.
+            let notifyMsg = useEncryptedDNS_Login
+                ? _('Login Mode (ISP DNS + Encrypted)')
+                : _('Login Mode (Standard)');
 
+            Main.notify(_('Bastion'), notifyMsg);
+            cmd = `pkexec sh -c 'nmcli connection modify ${uuid} ipv4.ignore-auto-dns no ipv4.dns "" connection.dns-over-tls ${dotSetting} && nmcli connection up ${uuid}'`;
         } else {
             // --- SWITCH TO SECURE MODE ---
             let ips = this._getDNSIPs();
-
+            
             // SECURITY FIX: Validate IPs to prevent shell injection
             if (!/^[0-9. ]+$/.test(ips)) {
-                Main.notify(_('Bastion Error'), _('Invalid Custom DNS format.'));
+                Main.notify(_('Bastion'), _('Invalid Custom DNS format.'));
                 return;
             }
 
             // Determine strictness: 'yes' (Strict) vs 'opportunistic' (Fallback allowed)
             let secureValue = strictMode ? 'yes' : 'opportunistic';
-            let dotSetting = useEncryptedDNS_Secure ? secureValue : 'no';
-            
-            let notifyMsg = '';
+            let dotSetting  = useEncryptedDNS_Secure ? secureValue : 'no';
+
+            let notifyMsg;
             if (useEncryptedDNS_Secure) {
-                notifyMsg = strictMode ? _('🛡️ Secure Mode (Strict TLS)...') : _('🛡️ Secure Mode (Opportunistic TLS)...');
+                notifyMsg = strictMode
+                    ? _('Secure Mode (Strict TLS)')
+                    : _('Secure Mode (Opportunistic TLS)');
             } else {
-                notifyMsg = _('🛡️ Secure Mode (Standard DNS)...');
+                notifyMsg = _('Secure Mode (Standard DNS)');
             }
 
             Main.notify(_('Bastion'), notifyMsg);
-
             cmd = `pkexec sh -c 'nmcli connection modify ${uuid} ipv4.ignore-auto-dns yes ipv4.dns "${ips}" connection.dns-over-tls ${dotSetting} && nmcli connection up ${uuid}'`;
         }
 
         await this._runCommand(cmd);
-        
+
         // Wait 2 seconds for connection to cycle, then update icon.
         
         // Prevent stacking: clear existing timer if user clicks rapidly
@@ -185,10 +196,10 @@ class DnsToggle extends PanelMenu.Button {
         }
 
         // Use GLib.timeout_add instead of setTimeout
-        this._updateTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+        // FIX 4: GLib.timeout_add_once — correct GNOME 50 one-shot API
+        this._updateTimeoutId = GLib.timeout_add_once(GLib.PRIORITY_DEFAULT, 2000, () => {
             this._checkStatus();
-            this._updateTimeoutId = null; // Clear ID self-reference
-            return GLib.SOURCE_REMOVE;
+            this._updateTimeoutId = null;
         });
     }
 });
@@ -205,16 +216,14 @@ export default class ExtensionImpl extends Extension {
             Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
             Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
             () => {
-                if (this._indicator) {
+                if (this._indicator)
                     this._indicator.toggleDNS();
-                }
             }
         );
     }
 
     disable() {
         Main.wm.removeKeybinding('toggle-shortcut');
-        
         if (this._indicator) {
             this._indicator.destroy();
             this._indicator = null;
