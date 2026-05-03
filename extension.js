@@ -204,22 +204,31 @@ const DnsToggle = GObject.registerClass({
     }
 });
 
+
 export default class ExtensionImpl extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._indicator = new DnsToggle(this._settings);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
-        Main.wm.addKeybinding(
+        // ──FIX 5 : always remove first to clear any stale Wayland binding ──
+        // On Wayland (GNOME 50 dropped X11), a binding from a previous
+        // enable() cycle may still be held by the compositor if disable()
+        // didn't complete cleanly. Calling removeKeybinding() first is a
+        // no-op when nothing is registered, and safe when something is.
+        Main.wm.removeKeybinding('toggle-shortcut');
+
+        const action = Main.wm.addKeybinding(
             'toggle-shortcut',
             this._settings,
             Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
-            Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW,
+            Shell.ActionMode.ALL,
             () => {
                 if (this._indicator)
                     this._indicator.toggleDNS();
             }
         );
+
     }
 
     disable() {
