@@ -10,7 +10,7 @@ import Meta from 'gi://Meta';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const DnsToggle = GObject.registerClass({
-    GTypeName: 'BastionDnsToggle',         // GType collision on extension reload
+    GTypeName: 'BastionDnsToggle',        
 }, class DnsToggle extends PanelMenu.Button {
     _init(settings) {
         super._init(0.0, _('Bastion'), true);
@@ -191,7 +191,7 @@ const DnsToggle = GObject.registerClass({
         }
 
         // Use GLib.timeout_add instead of setTimeout
-        this._updateTimeoutId = GLib.timeout_add_once(GLib.PRIORITY_DEFAULT, 2000, () => {
+        this._updateTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
             this._checkStatus();
             this._updateTimeoutId = null;
         });
