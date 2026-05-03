@@ -10,8 +10,7 @@ import Meta from 'gi://Meta';
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const DnsToggle = GObject.registerClass({
-    GTypeName: 'BastionDnsToggle',   // FIX 1: Explicit stable name prevents
-                                      // GType collision on extension reload
+    GTypeName: 'BastionDnsToggle',         // GType collision on extension reload
 }, class DnsToggle extends PanelMenu.Button {
     _init(settings) {
         super._init(0.0, _('Bastion'), true);
@@ -42,9 +41,6 @@ const DnsToggle = GObject.registerClass({
         });
     }
 
-    // FIX 2: Override vfunc_event instead of connecting to 'event' or
-    // 'button-press-event'. This is the most reliable approach in GNOME 50
-    // and avoids the signal dispatch changes in PanelMenu.Button.
     vfunc_event(event) {
         if (event.type() === Clutter.EventType.BUTTON_PRESS) {
             this.toggleDNS();
@@ -150,8 +146,7 @@ const DnsToggle = GObject.registerClass({
             // Login mode usually implies we need connectivity (captive portals), so we stick to opportunistic.
             let dotSetting = useEncryptedDNS_Login ? 'opportunistic' : 'no';
             
-            // FIX 3: No emoji inside _() — they corrupt the string literal
-            // on some editors/terminals and cause a SyntaxError at load time.
+        
             let notifyMsg = useEncryptedDNS_Login
                 ? _('Login Mode (ISP DNS + Encrypted)')
                 : _('Login Mode (Standard)');
@@ -196,7 +191,6 @@ const DnsToggle = GObject.registerClass({
         }
 
         // Use GLib.timeout_add instead of setTimeout
-        // FIX 4: GLib.timeout_add_once — correct GNOME 50 one-shot API
         this._updateTimeoutId = GLib.timeout_add_once(GLib.PRIORITY_DEFAULT, 2000, () => {
             this._checkStatus();
             this._updateTimeoutId = null;
@@ -211,11 +205,7 @@ export default class ExtensionImpl extends Extension {
         this._indicator = new DnsToggle(this._settings);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
-        // ──FIX 5 : always remove first to clear any stale Wayland binding ──
-        // On Wayland (GNOME 50 dropped X11), a binding from a previous
-        // enable() cycle may still be held by the compositor if disable()
-        // didn't complete cleanly. Calling removeKeybinding() first is a
-        // no-op when nothing is registered, and safe when something is.
+        //Remove existing keybinding if it exists to prevent duplicates on reload
         Main.wm.removeKeybinding('toggle-shortcut');
 
         const action = Main.wm.addKeybinding(
