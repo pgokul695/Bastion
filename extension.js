@@ -194,6 +194,7 @@ const DnsToggle = GObject.registerClass({
         this._updateTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
             this._checkStatus();
             this._updateTimeoutId = null;
+            return GLib.SOURCE_REMOVE;
         });
     }
 });
