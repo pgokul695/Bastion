@@ -23,6 +23,8 @@ function install_local() {
         --exclude='*.zip' \
         --exclude='build.sh' \
         --exclude='*.md' \
+        --exclude='schemas/gschema.compiled' \
+        --exclude='*.png'\
         . "$INSTALL_DIR/"
     
     # 3. Compile Schemas
@@ -50,7 +52,8 @@ function package_release() {
         -x "build.sh" \
         -x "*.md" \
         -x "schemas/gschema.compiled" \
-        -x "*.zip"
+        -x "*.zip"\
+        -x '*.png'
     
     echo -e "${GREEN}✅ Done!${NC}"
     echo "   Upload '$ZIP_NAME' to extensions.gnome.org"
