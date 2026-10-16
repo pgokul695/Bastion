@@ -4,6 +4,6 @@
     "uuid": "bastion@gokul.codes",
     "shell-version": [ "46", "47" ,"48","49","50","51"],
     "url": "https://github.com/pgokul695/bastion",
-    "version": 5,
+    "version": 8,
     "settings-schema": "org.gnome.shell.extensions.bastion"
 }
